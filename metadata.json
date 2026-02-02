@@ -1,0 +1,54 @@
+{
+    "customers": [
+        {
+            "column_name": "id",
+            "data_type": "INTEGER",
+            "nullable": true,
+            "primary_key": true
+        },
+        {
+            "column_name": "name",
+            "data_type": "TEXT",
+            "nullable": true,
+            "primary_key": false
+        },
+        {
+            "column_name": "email",
+            "data_type": "TEXT",
+            "nullable": true,
+            "primary_key": false
+        },
+        {
+            "column_name": "city",
+            "data_type": "TEXT",
+            "nullable": true,
+            "primary_key": false
+        }
+    ],
+    "orders": [
+        {
+            "column_name": "order_id",
+            "data_type": "INTEGER",
+            "nullable": true,
+            "primary_key": true
+        },
+        {
+            "column_name": "customer_id",
+            "data_type": "INTEGER",
+            "nullable": true,
+            "primary_key": false
+        },
+        {
+            "column_name": "amount",
+            "data_type": "REAL",
+            "nullable": true,
+            "primary_key": false
+        },
+        {
+            "column_name": "order_date",
+            "data_type": "TEXT",
+            "nullable": true,
+            "primary_key": false
+        }
+    ]
+}
