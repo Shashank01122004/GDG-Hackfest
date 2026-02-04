@@ -46,3 +46,6 @@ build/
 
 # Virtual environment
 venv/
+
+# Generated artifacts (run pipeline to regenerate)
+artifacts/

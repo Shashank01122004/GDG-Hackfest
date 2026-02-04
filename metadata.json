@@ -9,7 +9,7 @@
         {
             "column_name": "name",
             "data_type": "TEXT",
-            "nullable": true,
+            "nullable": false,
             "primary_key": false
         },
         {
@@ -35,19 +35,19 @@
         {
             "column_name": "customer_id",
             "data_type": "INTEGER",
-            "nullable": true,
+            "nullable": false,
             "primary_key": false
         },
         {
             "column_name": "amount",
             "data_type": "REAL",
-            "nullable": true,
+            "nullable": false,
             "primary_key": false
         },
         {
             "column_name": "order_date",
             "data_type": "TEXT",
-            "nullable": true,
+            "nullable": false,
             "primary_key": false
         }
     ]
