@@ -269,3 +269,21 @@ with open(html_path, "r", encoding="utf-8") as f:
     html_content = f.read()
 
 st.components.v1.html(html_content, height=900, scrolling=False)
+
+st.subheader("🧠 Ask in English → Get SQL Result")
+
+nl_query = st.text_input("Ask a data question (e.g. most frequent product, total revenue, average price)")
+
+if nl_query:
+    from ai_engine import generate_sql, execute_sql
+
+    sql = generate_sql(nl_query, metadata)
+
+    st.code(sql, language="sql")
+
+    cols, rows = execute_sql(sql)
+
+    if isinstance(rows, str):
+        st.error(rows)
+    else:
+        st.dataframe(rows, use_container_width=True)
