@@ -1,11 +1,17 @@
 """
-Extract schema metadata from the database: tables, columns, relationships, constraints.
-Supports SQLite (full); PostgreSQL/SQL Server use same interface via db_connector.
+Extract schema metadata from the database: tables, columns, relationships.
+Works with CSV-created SQLite tables + real databases.
+Automatically infers primary keys and foreign key relationships.
 """
+
 from config import DB_TYPE, ARTIFACTS_DIR
 from db_connector import get_connection
 from storage import save_json
 
+
+# --------------------------------------------------
+# SQLite helpers
+# --------------------------------------------------
 
 def _get_tables_sqlite(cursor):
     cursor.execute(
@@ -20,7 +26,7 @@ def _get_columns_sqlite(cursor, table_name):
         {
             "column_name": row[1],
             "data_type": row[2],
-            "nullable": bool(row[3] == 0),
+            "nullable": row[3] == 0,
             "primary_key": bool(row[5]),
         }
         for row in cursor.fetchall()
@@ -31,66 +37,137 @@ def _get_foreign_keys_sqlite(cursor, table_name):
     cursor.execute(f"PRAGMA foreign_key_list({table_name})")
     return [
         {
-            "from_column": row[3],
-            "to_table": row[2],
-            "to_column": row[4],
+            "table": table_name,
+            "column": row[3],
+            "ref_table": row[2],
+            "ref_column": row[4],
+            "type": "explicit_fk",
         }
         for row in cursor.fetchall()
     ]
 
 
-def extract_metadata(db_path=None):
+# --------------------------------------------------
+# Intelligent inference
+# --------------------------------------------------
+
+def _infer_primary_keys(tables_schema):
     """
-    Extract full schema: tables, columns, and relationships (FKs).
-    For SQLite, db_path is optional (uses config.DB_PATH).
-    Returns: { "tables": { table_name: [columns] }, "relationships": [ { table, column, ref_table, ref_column } ] }
+    Mark likely primary keys when CSV didn't define them.
+    Rule: column named 'id' or ending with '_id'
     """
+    for table, cols in tables_schema.items():
+        for col in cols:
+            name = col["column_name"].lower()
+            if name == "id" or name.endswith("_id"):
+                col["primary_key"] = True
+
+
+def _infer_relationships(tables_schema):
+    """
+    Infer relationships by matching *_id columns to inferred PKs.
+    """
+    relations = []
+
+    for table, cols in tables_schema.items():
+        for col in cols:
+            col_name = col["column_name"]
+
+            if not col_name.lower().endswith("_id"):
+                continue
+
+            for target_table, target_cols in tables_schema.items():
+                if target_table == table:
+                    continue
+
+                for tcol in target_cols:
+                    if tcol["primary_key"] and tcol["column_name"] == col_name:
+                        relations.append({
+                            "table": table,
+                            "column": col_name,
+                            "ref_table": target_table,
+                            "ref_column": col_name,
+                            "type": "inferred_pk_match",
+                        })
+
+    return relations
+
+
+# --------------------------------------------------
+# Main extractor
+# --------------------------------------------------
+
+def extract_metadata():
+    """
+    Returns:
+    {
+      "tables": { table_name: [columns] },
+      "relationships": [ { table, column, ref_table, ref_column, type } ]
+    }
+    """
+
     conn = get_connection()
     cursor = conn.cursor()
+
+    metadata = {"tables": {}, "relationships": []}
+
     try:
         if DB_TYPE == "sqlite":
             tables = _get_tables_sqlite(cursor)
-            metadata = {"tables": {}, "relationships": []}
-            for table_name in tables:
-                metadata["tables"][table_name] = _get_columns_sqlite(cursor, table_name)
-                for fk in _get_foreign_keys_sqlite(cursor, table_name):
-                    metadata["relationships"].append({
-                        "table": table_name,
-                        "column": fk["from_column"],
-                        "ref_table": fk["to_table"],
-                        "ref_column": fk["to_column"],
-                    })
+
+            # Extract columns
+            for table in tables:
+                metadata["tables"][table] = _get_columns_sqlite(cursor, table)
+
+            # Infer missing PKs
+            _infer_primary_keys(metadata["tables"])
+
+            # Explicit FKs (if exist)
+            for table in tables:
+                metadata["relationships"].extend(
+                    _get_foreign_keys_sqlite(cursor, table)
+                )
+
+            # Inferred relationships
+            inferred = _infer_relationships(metadata["tables"])
+            metadata["relationships"].extend(inferred)
+
         else:
-            # Generic fallback: list tables and columns (implement per-DB if needed)
-            metadata = {"tables": {}, "relationships": []}
             cursor.execute("""
-                SELECT table_name FROM information_schema.tables
-                WHERE table_schema = 'public' AND table_type = 'BASE TABLE'
+                SELECT table_name
+                FROM information_schema.tables
+                WHERE table_schema='public'
             """)
-            tables = [row[0] for row in cursor.fetchall()]
-            for table_name in tables:
+            tables = [r[0] for r in cursor.fetchall()]
+
+            for table in tables:
                 cursor.execute("""
-                    SELECT column_name, data_type, is_nullable, column_default
+                    SELECT column_name, data_type, is_nullable
                     FROM information_schema.columns
-                    WHERE table_schema = 'public' AND table_name = %s
-                """, (table_name,))
-                metadata["tables"][table_name] = [
+                    WHERE table_schema='public' AND table_name=%s
+                """, (table,))
+
+                metadata["tables"][table] = [
                     {
-                        "column_name": row[0],
-                        "data_type": row[1],
-                        "nullable": row[2] == "YES",
+                        "column_name": r[0],
+                        "data_type": r[1],
+                        "nullable": r[2] == "YES",
                         "primary_key": False,
                     }
-                    for row in cursor.fetchall()
+                    for r in cursor.fetchall()
                 ]
+
     finally:
         conn.close()
 
     return metadata
 
 
+# --------------------------------------------------
+# Save runner
+# --------------------------------------------------
+
 def run_and_save():
-    """Extract metadata and save to artifacts/metadata.json."""
     ARTIFACTS_DIR.mkdir(parents=True, exist_ok=True)
     meta = extract_metadata()
     path = ARTIFACTS_DIR / "metadata.json"
@@ -100,5 +177,4 @@ def run_and_save():
 
 
 if __name__ == "__main__":
-    from config import ARTIFACTS_DIR
     run_and_save()

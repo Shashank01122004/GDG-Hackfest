@@ -1,54 +1,300 @@
 {
+    "sqlite_sequence": [
+        {
+            "name": "name",
+            "type": "",
+            "nullable": true,
+            "pk": false
+        },
+        {
+            "name": "seq",
+            "type": "",
+            "nullable": true,
+            "pk": false
+        }
+    ],
     "customers": [
         {
-            "column_name": "id",
-            "data_type": "INTEGER",
+            "name": "customer_id",
+            "type": "TEXT",
             "nullable": true,
-            "primary_key": true
+            "pk": false
         },
         {
-            "column_name": "name",
-            "data_type": "TEXT",
-            "nullable": false,
-            "primary_key": false
+            "name": "customer_unique_id",
+            "type": "TEXT",
+            "nullable": true,
+            "pk": false
         },
         {
-            "column_name": "email",
-            "data_type": "TEXT",
+            "name": "customer_zip_code_prefix",
+            "type": "INTEGER",
             "nullable": true,
-            "primary_key": false
+            "pk": false
         },
         {
-            "column_name": "city",
-            "data_type": "TEXT",
+            "name": "customer_city",
+            "type": "TEXT",
             "nullable": true,
-            "primary_key": false
+            "pk": false
+        },
+        {
+            "name": "customer_state",
+            "type": "TEXT",
+            "nullable": true,
+            "pk": false
         }
     ],
     "orders": [
         {
-            "column_name": "order_id",
-            "data_type": "INTEGER",
+            "name": "order_id",
+            "type": "TEXT",
             "nullable": true,
-            "primary_key": true
+            "pk": false
         },
         {
-            "column_name": "customer_id",
-            "data_type": "INTEGER",
-            "nullable": false,
-            "primary_key": false
+            "name": "customer_id",
+            "type": "TEXT",
+            "nullable": true,
+            "pk": false
         },
         {
-            "column_name": "amount",
-            "data_type": "REAL",
-            "nullable": false,
-            "primary_key": false
+            "name": "order_status",
+            "type": "TEXT",
+            "nullable": true,
+            "pk": false
         },
         {
-            "column_name": "order_date",
-            "data_type": "TEXT",
-            "nullable": false,
-            "primary_key": false
+            "name": "order_purchase_timestamp",
+            "type": "TEXT",
+            "nullable": true,
+            "pk": false
+        },
+        {
+            "name": "order_approved_at",
+            "type": "TEXT",
+            "nullable": true,
+            "pk": false
+        },
+        {
+            "name": "order_delivered_carrier_date",
+            "type": "TEXT",
+            "nullable": true,
+            "pk": false
+        },
+        {
+            "name": "order_delivered_customer_date",
+            "type": "TEXT",
+            "nullable": true,
+            "pk": false
+        },
+        {
+            "name": "order_estimated_delivery_date",
+            "type": "TEXT",
+            "nullable": true,
+            "pk": false
+        }
+    ],
+    "order_items": [
+        {
+            "name": "order_id",
+            "type": "TEXT",
+            "nullable": true,
+            "pk": false
+        },
+        {
+            "name": "order_item_id",
+            "type": "INTEGER",
+            "nullable": true,
+            "pk": false
+        },
+        {
+            "name": "product_id",
+            "type": "TEXT",
+            "nullable": true,
+            "pk": false
+        },
+        {
+            "name": "seller_id",
+            "type": "TEXT",
+            "nullable": true,
+            "pk": false
+        },
+        {
+            "name": "shipping_limit_date",
+            "type": "TEXT",
+            "nullable": true,
+            "pk": false
+        },
+        {
+            "name": "price",
+            "type": "REAL",
+            "nullable": true,
+            "pk": false
+        },
+        {
+            "name": "freight_value",
+            "type": "REAL",
+            "nullable": true,
+            "pk": false
+        }
+    ],
+    "payments": [
+        {
+            "name": "order_id",
+            "type": "TEXT",
+            "nullable": true,
+            "pk": false
+        },
+        {
+            "name": "payment_sequential",
+            "type": "INTEGER",
+            "nullable": true,
+            "pk": false
+        },
+        {
+            "name": "payment_type",
+            "type": "TEXT",
+            "nullable": true,
+            "pk": false
+        },
+        {
+            "name": "payment_installments",
+            "type": "INTEGER",
+            "nullable": true,
+            "pk": false
+        },
+        {
+            "name": "payment_value",
+            "type": "REAL",
+            "nullable": true,
+            "pk": false
+        }
+    ],
+    "products": [
+        {
+            "name": "product_id",
+            "type": "TEXT",
+            "nullable": true,
+            "pk": false
+        },
+        {
+            "name": "product_category_name",
+            "type": "TEXT",
+            "nullable": true,
+            "pk": false
+        },
+        {
+            "name": "product_name_lenght",
+            "type": "REAL",
+            "nullable": true,
+            "pk": false
+        },
+        {
+            "name": "product_description_lenght",
+            "type": "REAL",
+            "nullable": true,
+            "pk": false
+        },
+        {
+            "name": "product_photos_qty",
+            "type": "REAL",
+            "nullable": true,
+            "pk": false
+        },
+        {
+            "name": "product_weight_g",
+            "type": "REAL",
+            "nullable": true,
+            "pk": false
+        },
+        {
+            "name": "product_length_cm",
+            "type": "REAL",
+            "nullable": true,
+            "pk": false
+        },
+        {
+            "name": "product_height_cm",
+            "type": "REAL",
+            "nullable": true,
+            "pk": false
+        },
+        {
+            "name": "product_width_cm",
+            "type": "REAL",
+            "nullable": true,
+            "pk": false
+        }
+    ],
+    "reviews": [
+        {
+            "name": "review_id",
+            "type": "TEXT",
+            "nullable": true,
+            "pk": false
+        },
+        {
+            "name": "order_id",
+            "type": "TEXT",
+            "nullable": true,
+            "pk": false
+        },
+        {
+            "name": "review_score",
+            "type": "INTEGER",
+            "nullable": true,
+            "pk": false
+        },
+        {
+            "name": "review_comment_title",
+            "type": "TEXT",
+            "nullable": true,
+            "pk": false
+        },
+        {
+            "name": "review_comment_message",
+            "type": "TEXT",
+            "nullable": true,
+            "pk": false
+        },
+        {
+            "name": "review_creation_date",
+            "type": "TEXT",
+            "nullable": true,
+            "pk": false
+        },
+        {
+            "name": "review_answer_timestamp",
+            "type": "TEXT",
+            "nullable": true,
+            "pk": false
+        }
+    ],
+    "sellers": [
+        {
+            "name": "seller_id",
+            "type": "TEXT",
+            "nullable": true,
+            "pk": false
+        },
+        {
+            "name": "seller_zip_code_prefix",
+            "type": "INTEGER",
+            "nullable": true,
+            "pk": false
+        },
+        {
+            "name": "seller_city",
+            "type": "TEXT",
+            "nullable": true,
+            "pk": false
+        },
+        {
+            "name": "seller_state",
+            "type": "TEXT",
+            "nullable": true,
+            "pk": false
         }
     ]
 }
