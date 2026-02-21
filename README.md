@@ -1,4 +1,4 @@
-# Intelligent Data Dictionary Agent
+# Intelligent Data Dictionary Agent CHASERS
 
 **Hackathon: Intelligent Data Dictionary Agent (ps11)**
 
