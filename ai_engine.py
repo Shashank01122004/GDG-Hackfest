@@ -94,6 +94,7 @@ Return JSON exactly:
 # ===========================
 
 def answer_question(question, metadata, profiles, summaries):
+    """Answer any user question about the database schema, relationships, data quality, or documentation."""
 
     context = json.dumps({
         "metadata": metadata,
@@ -102,7 +103,12 @@ def answer_question(question, metadata, profiles, summaries):
     })[:12000]   # avoid token overflow
 
     prompt = f"""
-You are an intelligent data dictionary assistant.
+You are an intelligent data dictionary assistant. You answer any question about the database: schema, tables, columns, relationships (foreign keys), data quality, row counts, and AI-generated summaries.
+
+Rules:
+- Answer in clear, concise markdown. Use bullets or short paragraphs as appropriate.
+- If the question is about schema/relationships/quality/docs, use the Context below to answer.
+- If the question is unrelated to this database (e.g. general knowledge, other topics), reply briefly that you are focused on this database's schema and data dictionary only, and suggest rephrasing about tables, columns, or data quality.
 
 Context:
 {context}
