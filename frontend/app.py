@@ -393,12 +393,19 @@ with st.sidebar:
             key="export_max_rows",
         )
         one_file = st.checkbox("Single file (table_data.json)", value=False, key="export_one_file")
+        custom_name = st.text_input(
+            "Custom file name (optional)",
+            placeholder="e.g. my_backup or jan_export",
+            key="export_custom_name",
+        )
+        st.caption("Single file: used as filename (e.g. my_backup → my_backup.json). Per-table: used as prefix (e.g. my_backup → my_backup_customers.json).")
         if st.button("Export", key="export_table_data_btn"):
             try:
                 from export_table_data import export_table_data_to_json
                 tbl_list = export_tables if export_tables else None
                 limit = max_rows if max_rows else None
-                out = export_table_data_to_json(one_file=one_file, tables=tbl_list, max_rows_per_table=limit)
+                name = custom_name.strip() or None
+                out = export_table_data_to_json(one_file=one_file, tables=tbl_list, max_rows_per_table=limit, custom_name=name)
                 st.success(f"Exported to `{out}`")
             except NotImplementedError:
                 st.info("Table data export is only supported for SQLite.")
