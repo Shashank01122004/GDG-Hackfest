@@ -171,10 +171,37 @@ Question:
     return sql
 
 # ===========================
-# SQL EXECUTOR
+# SQL EXECUTOR (with destructive-command block)
 # ===========================
 
+# Commands that may cause data loss — we generate SQL but do not run them
+_DESTRUCTIVE_PATTERNS = [
+    "DROP TABLE",
+    "DROP VIEW",
+    "DROP INDEX",
+    "DROP COLUMN",
+    "TRUNCATE TABLE",
+    "TRUNCATE ",
+    "DELETE FROM",
+    "ALTER TABLE",  # can DROP COLUMN etc.; blocked for safety
+]
+
+
+def _is_destructive(sql):
+    """Return (True, reason) if SQL appears to be destructive; else (False, None)."""
+    if not sql or not sql.strip():
+        return True, "Empty query."
+    normalized = " ".join(sql.upper().split())
+    for pattern in _DESTRUCTIVE_PATTERNS:
+        if pattern.upper() in normalized:
+            return True, f"Execution blocked: '{pattern.strip()}' commands are not allowed to prevent data loss. You can copy the SQL above and run it elsewhere if needed."
+    return False, None
+
+
 def execute_sql(sql):
+    blocked, reason = _is_destructive(sql)
+    if blocked:
+        return None, reason
 
     conn = sqlite3.connect(DB_PATH)
     cur = conn.cursor()

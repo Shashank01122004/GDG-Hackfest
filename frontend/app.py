@@ -453,6 +453,7 @@ with tab_er:
         ]
     n_er_tables = len(tables_for_er)
     st.caption(f"Showing **{n_er_tables}** tables and **{len(rels_er)}** relationships. Click a table to show only it and connected tables; pan and zoom to explore.")
+    st.caption("After adding or removing tables in the database, click **Refresh documentation** in the sidebar to update this diagram.")
     if n_er_tables == 0:
         st.info("No table metadata available. Click **Refresh documentation** in the sidebar to generate schema and then reload.")
     else:
@@ -466,7 +467,7 @@ with tab_er:
 
 with tab_sql:
     st.subheader("Ask in English → Get SQL Result")
-    st.caption("Describe what you want; the app will generate and run SQL.")
+    st.caption("Describe what you want; the app will generate and run SQL. DROP/DELETE/TRUNCATE and other destructive commands are blocked from execution to prevent data loss (SQL is still shown).")
     nl_query = st.text_input("Ask a data question", placeholder="e.g. most frequent product, total revenue, average price", key="nl_sql_input")
     if nl_query:
         from ai_engine import generate_sql, execute_sql
