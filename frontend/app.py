@@ -46,11 +46,10 @@ def load_artifacts():
 
 
 def _compute_layered_positions(tables, relationships, x_gap=480, y_gap=380):
-    """Place tables in layers by FK dependency so edges flow left→right and cross less."""
+    """Place tables in layers by FK dependency (tree-like). Returns (positions, levels)."""
     table_names = list(tables.keys())
     if not table_names:
-        return {}
-    # refs[t] = set of tables that t references (t has FK → ref_table)
+        return {}, {}
     refs = {t: set() for t in table_names}
     for r in relationships:
         if not isinstance(r, dict):
@@ -58,41 +57,37 @@ def _compute_layered_positions(tables, relationships, x_gap=480, y_gap=380):
         fr, to = r.get("table"), r.get("ref_table")
         if fr and to and fr in refs and to in refs and fr != to:
             refs[fr].add(to)
-    # layer[t] = 0 if never a "from", else 1 + max(layer of refs)
     layer = {}
     for t in table_names:
         if not refs[t]:
             layer[t] = 0
         else:
             layer[t] = 1 + max(layer.get(r, 0) for r in refs[t])
-    # Resolve in dependency order so refs are computed before dependents
     for _ in range(len(table_names) + 1):
         for t in table_names:
             if refs[t]:
                 layer[t] = 1 + max(layer.get(r, 0) for r in refs[t])
-    # Group by layer and assign (x, y): same layer = same x, spread y
     by_layer = {}
     for t, lv in layer.items():
         by_layer.setdefault(lv, []).append(t)
     for lv in by_layer:
         by_layer[lv].sort()
-    origin_x, origin_y = 360, 380
     positions = {}
     for lv in sorted(by_layer.keys()):
         names = by_layer[lv]
-        n = len(names)
         for row, name in enumerate(names):
             x = 180 + lv * x_gap
             y = 180 + row * y_gap
             positions[name] = (x, y)
-    return positions
+    return positions, layer
 
 
-def build_er_diagram(tables, relationships):
+def build_er_diagram(tables, relationships, tree_layout=True):
+    """Build ER diagram. tree_layout=True uses hierarchical (tree) layout for clarity."""
     if not tables:
         return None
     table_names = list(tables.keys())
-    positions   = _compute_layered_positions(tables, relationships)
+    positions, levels = _compute_layered_positions(tables, relationships)
 
     # Map "table|col" → color for FK columns
     col_colors: dict[str, str] = {}
@@ -175,12 +170,10 @@ def build_er_diagram(tables, relationships):
         else:
             title_plain = f"{table}\n─────────────\n{col_list}"
 
-        nodes_js.append({
+        node_entry = {
             "id":    table,
             "label": label,
             "title": title_plain,
-            "x":     x,
-            "y":     y,
             "physics": False,
             "font": {
                 "size": 15,
@@ -198,7 +191,13 @@ def build_er_diagram(tables, relationships):
             "borderWidth": 2,
             "margin":      {"top": 14, "right": 18, "bottom": 14, "left": 18},
             "widthConstraint": {"minimum": 200, "maximum": 280},
-        })
+        }
+        if tree_layout:
+            node_entry["level"] = levels.get(table, 0)
+        else:
+            node_entry["x"] = x
+            node_entry["y"] = y
+        nodes_js.append(node_entry)
 
     edges_js = []
     for e in edge_data:
@@ -223,6 +222,7 @@ def build_er_diagram(tables, relationships):
 
     nodes_json = json.dumps(nodes_js)
     edges_json = json.dumps(edges_js)
+    tree_layout_js = "true" if tree_layout else "false"
 
     # Embed local vis-network so diagram works inside Streamlit iframe (CDN often blocked)
     vis_lib_dir = PROJECT_ROOT / "lib" / "vis-9.1.2"
@@ -281,13 +281,24 @@ def build_er_diagram(tables, relationships):
         hover: true,
         selectable: true,
         selectConnectedEdges: true,
-        navigationButtons: true,
+        navigationButtons: false,
         keyboard: false,
         tooltipDelay: 100
       }},
       physics: {{ enabled: false }},
       edges: {{ smooth: {{ type: "curvedCW", roundness: 0.2 }} }}
     }};
+    if ({tree_layout_js}) {{
+      options.layout = {{
+        hierarchical: {{
+          enabled: true,
+          direction: "LR",
+          sortMethod: "directed",
+          levelSeparation: 220,
+          nodeSpacing: 180
+        }}
+      }};
+    }}
 
     var network = new vis.Network(container, data, options);
 
@@ -366,6 +377,33 @@ with st.sidebar:
                 "Download Markdown", f.read(),
                 file_name="data_dictionary.md", mime="text/markdown"
             )
+    with st.expander("Export table data (JSON)", expanded=False):
+        tables_opt = list(tables_dict.keys()) if isinstance(tables_dict, dict) else []
+        export_tables = st.multiselect(
+            "Tables to export (empty = all)",
+            options=tables_opt,
+            default=[],
+            key="export_tables_select",
+        )
+        max_rows = st.number_input(
+            "Max rows per table (0 = no limit)",
+            min_value=0,
+            value=0,
+            step=100,
+            key="export_max_rows",
+        )
+        one_file = st.checkbox("Single file (table_data.json)", value=False, key="export_one_file")
+        if st.button("Export", key="export_table_data_btn"):
+            try:
+                from export_table_data import export_table_data_to_json
+                tbl_list = export_tables if export_tables else None
+                limit = max_rows if max_rows else None
+                out = export_table_data_to_json(one_file=one_file, tables=tbl_list, max_rows_per_table=limit)
+                st.success(f"Exported to `{out}`")
+            except NotImplementedError:
+                st.info("Table data export is only supported for SQLite.")
+            except Exception as e:
+                st.error(str(e))
 
     st.divider()
     st.subheader("Tables")
@@ -435,7 +473,6 @@ with tab_chat:
 
 with tab_er:
     st.subheader("Database ER Diagram")
-    # Use metadata directly so ER diagram always gets the same tables as the rest of the app
     tables_raw = metadata.get("tables", {})
     if not isinstance(tables_raw, dict):
         tables_raw = {}
@@ -452,12 +489,44 @@ with tab_er:
             for c in cols
         ]
     n_er_tables = len(tables_for_er)
-    st.caption(f"Showing **{n_er_tables}** tables and **{len(rels_er)}** relationships. Click a table to show only it and connected tables; pan and zoom to explore.")
-    st.caption("After adding or removing tables in the database, click **Refresh documentation** in the sidebar to update this diagram.")
+    # Connected table names per table (for tree view)
+    connected_er = {t: set() for t in tables_for_er}
+    fk_ref_er = {}
+    for r in rels_er:
+        if not isinstance(r, dict):
+            continue
+        fr, to, col = r.get("table"), r.get("ref_table"), r.get("column")
+        if fr and to and fr in connected_er and to in connected_er:
+            connected_er[fr].add(to)
+            connected_er[to].add(fr)
+            fk_ref_er[(fr, col)] = to
+
+    view_mode = st.radio("View", ["Tree diagram (graph)", "Schema tree (expandable)"], horizontal=True, key="er_view_mode")
+    st.caption(f"**{n_er_tables}** tables, **{len(rels_er)}** relationships. After DB changes, click **Refresh documentation** in the sidebar.")
+
     if n_er_tables == 0:
         st.info("No table metadata available. Click **Refresh documentation** in the sidebar to generate schema and then reload.")
+    elif view_mode == "Schema tree (expandable)":
+        st.caption("Expand each table to see columns and connections. Simpler than the graph.")
+        for tname in sorted(tables_for_er.keys()):
+            cols = tables_for_er[tname]
+            conn_list = sorted(connected_er.get(tname, []))
+            with st.expander(f"**{tname}**" + (f" — connected to {', '.join(conn_list)}" if conn_list else ""), expanded=False):
+                for c in cols:
+                    name = c.get("column_name", "")
+                    pk = c.get("primary_key", False)
+                    ref = fk_ref_er.get((tname, name))
+                    if pk and not ref:
+                        st.markdown(f"🔑 **{name}** (PK)")
+                    elif ref:
+                        st.markdown(f"⬡ **{name}** (FK → {ref})")
+                    else:
+                        st.markdown(f"  {name}")
+                if conn_list:
+                    st.caption(f"Connected tables: {', '.join(conn_list)}")
     else:
-        html_path = build_er_diagram(tables_for_er, rels_er)
+        st.caption("Tree-style layout: referenced tables on the left, referencing on the right. Click a table to focus; double-click to show all. Pan and zoom.")
+        html_path = build_er_diagram(tables_for_er, rels_er, tree_layout=True)
         if html_path:
             with open(html_path, "r", encoding="utf-8") as f:
                 html_content = f.read()

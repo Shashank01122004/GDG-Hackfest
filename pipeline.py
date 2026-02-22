@@ -1,6 +1,8 @@
 """
 Full pipeline: extract metadata → profile → AI summaries → save artifacts (JSON + Markdown).
+Optionally exports table row data to JSON (see EXPORT_TABLE_DATA).
 """
+import os
 from pathlib import Path
 from config import ARTIFACTS_DIR
 from storage import load_json, save_json
@@ -34,6 +36,16 @@ def run_pipeline():
 
     # 4. Markdown documentation
     docs_save(meta, profiles, summaries)
+
+    # 5. Optional: export table row data to JSON (set EXPORT_TABLE_DATA=1 to enable)
+    if os.getenv("EXPORT_TABLE_DATA", "").strip() in ("1", "true", "yes"):
+        try:
+            from export_table_data import export_table_data_to_json
+            export_table_data_to_json(one_file=False)
+            print("Saved artifacts/table_data/*.json")
+        except Exception as e:
+            print(f"Table data export skipped: {e}")
+
     print("Pipeline complete.")
     return meta, profiles, summaries
 

@@ -54,6 +54,8 @@ This writes:
 - `artifacts/summaries.json` — AI/template table summaries  
 - `artifacts/data_dictionary.md` — full data dictionary in Markdown  
 
+To also export **table row data as JSON**: set `EXPORT_TABLE_DATA=1` in `.env` and run the pipeline (exports all tables, all rows), or use the sidebar **Export table data (JSON)** in the app. In the app you can choose: **all tables or selected tables**, **all rows or a max rows per table**, and **one file per table** or **one combined file** (`table_data.json`). Writes to `artifacts/table_data/` (SQLite only).  
+
 ### 5. Run the Streamlit chat app
 
 ```bash
@@ -168,6 +170,47 @@ hackfest/
 4. **Optional: OpenAI**
 
    Set `OPENAI_API_KEY` in `.env` and run the pipeline and chat again for AI-generated summaries and full natural language answers.
+
+---
+
+## Deploying this app (Streamlit Cloud, Railway, etc.)
+
+When you deploy this Streamlit app, use the following so it runs correctly.
+
+### Run command
+
+From the **repository root**:
+
+```bash
+streamlit run frontend/app.py
+```
+
+### Required: API key
+
+- **GEMINI_API_KEY** — Used for chat answers, table summaries, and NL→SQL. Set it as a **secret** (Streamlit Cloud: Settings → Secrets; elsewhere: environment variable). If it’s missing, the app will fail on import.
+
+### Database and artifacts
+
+- **SQLite default:** The app expects `demo.db` in the project root. Either:
+  - Commit a pre-built `demo.db`, or
+  - Run `python create_db.py` as part of your deploy (e.g. in a Dockerfile or release script).
+- **Artifacts:** If `artifacts/metadata.json` and `artifacts/profiles.json` don’t exist, the app runs the pipeline once on first load. For a clean deploy you can either commit `artifacts/` or let the app generate them (requires DB and GEMINI_API_KEY).
+
+### Optional env vars
+
+- **DB_PATH** — Override SQLite path (e.g. `/tmp/demo.db` on ephemeral filesystems).
+- **DB_TYPE**, **POSTGRES_URI**, **SQLSERVER_URI** — Use a remote DB instead of SQLite.
+
+### Checklist
+
+| Item | Notes |
+|------|--------|
+| `requirements.txt` at repo root | Already present (streamlit, pandas, google-genai, networkx, pyvis). |
+| `GEMINI_API_KEY` | Set in secrets / env. |
+| `demo.db` | Include in repo or create on deploy. |
+| Run from repo root | So `frontend/app.py` and paths like `artifacts/`, `demo.db` resolve correctly. |
+
+On **Streamlit Community Cloud**: connect the repo, set **Secrets** with `GEMINI_API_KEY`, and use the run command above. The app will create `artifacts/` on first run if needed.
 
 ---
 
